@@ -1,0 +1,24 @@
+task:
+  name: "Update Runner Image ($MACOS_VERSION)"
+  env:
+    matrix:
+      - MACOS_VERSION: sonoma
+        XCODE_VERSIONS: 16,15.4,15.3,15.2
+      - MACOS_VERSION: sequoia
+        XCODE_VERSIONS: "16,\"16.2-beta-1\",\"16.1-rc\",15.4"
+  <<: *defaults
+  pull_base_script:
+    - tart pull ghcr.io/cirruslabs/macos-$MACOS_VERSION-base:latest
+  init_xcode_script: packer init templates/xcode.pkr.hcl
+  build_xcode_script: |
+      packer build -var tag=runner -var disk_size=300 \
+        -var disk_free_mb=100000 \
+        -var macos_version="$MACOS_VERSION" \
+        -var xcode_version="[$XCODE_VERSIONS]" \
+        -var additional_runtimes="[$ADDITIONAL_RUNTIMES]" \
+        templates/xcode.pkr.hcl
+  push_script: |
+    tart push "$MACOS_VERSION-xcode:runner" ghcr.io/cirruslabs/macos-runner:$MACOS_VERSION
+  always:
+    cleanup_script:
+      - tart delete "$MACOS_VERSION-xcode:runner"

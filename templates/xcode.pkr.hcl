@@ -17,6 +17,7 @@ variable "xcode_version" {
 
 variable "additional_runtimes" {
   type = list(string)
+  default = []
 }
 
 variable "tag" {
@@ -42,7 +43,7 @@ variable "android_sdk_tools_version" {
 source "tart-cli" "tart" {
   vm_base_name = "ghcr.io/cirruslabs/macos-${var.macos_version}-base:latest"
   // use tag or the last element of the xcode_version list
-  vm_name      = "${var.macos_version}-xcode:${var.tag != "" ? var.tag : var.xcode_version[length(var.xcode_version) - 1]}"
+  vm_name      = "${var.macos_version}-xcode:${var.tag != "" ? var.tag : var.xcode_version[0]}"
   cpu_count    = 4
   memory_gb    = 8
   disk_size_gb = var.disk_size
@@ -140,9 +141,18 @@ build {
 
   provisioner "shell" {
     inline = [
-      for runtime in var.additional_runtimes :
-      "source ~/.zprofile && sudo xcodes runtimes install ${runtime}"
+      "source ~/.zprofile",
+      "sudo xcodes select '${var.xcode_version[0]}'",
     ]
+  }
+
+  provisioner "shell" {
+    inline = concat(
+      ["source ~/.zprofile"],
+      [
+        for runtime in var.additional_runtimes : "sudo xcodes runtimes install ${runtime}"
+      ]
+    )
   }
 
   provisioner "shell" {
@@ -176,7 +186,8 @@ build {
     inline = [
       "source ~/.zprofile",
       "brew install graphicsmagick imagemagick",
-      "brew install wix/brew/applesimutils"
+      "brew install wix/brew/applesimutils",
+      "brew install gnupg"
     ]
   }
 
