@@ -1,21 +1,22 @@
 packer {
   required_plugins {
     tart = {
-      version = ">= 1.12.0"
+      version = ">= 1.2.0"
       source  = "github.com/cirruslabs/tart"
     }
   }
 }
 
 source "tart-cli" "tart" {
-  from_ipsw    = "https://updates.cdn-apple.com/2024FallFCS/fullrestores/072-30094/44BD016F-6EE3-4EE5-8890-6F9AA008C537/UniversalMac_15.1.1_24B91_Restore.ipsw"
-  vm_name      = "sequoia-vanilla"
+  # You can find macOS IPSW URLs on various websites like https://ipsw.me/
+  from_ipsw    = "https://updates.cdn-apple.com/2022FallFCS/fullrestores/012-66032/8D8D90C6-A876-4FFF-BBF4-D158939B3841/UniversalMac_12.6.1_21G217_Restore.ipsw"
+  vm_name      = "monterey-vanilla"
   cpu_count    = 4
   memory_gb    = 8
   disk_size_gb = 40
   ssh_password = "admin"
   ssh_username = "admin"
-  ssh_timeout  = "300s"
+  ssh_timeout  = "120s"
   boot_command = [
     # hello, hola, bonjour, etc.
     "<wait60s><spacebar>",
@@ -48,36 +49,31 @@ source "tart-cli" "tart" {
     # Create a Computer Account
     "<wait10s>admin<tab><tab>admin<tab>admin<tab><tab><tab><spacebar>",
     # Enable Location Services
-    "<wait120s><leftShiftOn><tab><leftShiftOff><spacebar>",
+    "<wait10s><leftShiftOn><tab><leftShiftOff><spacebar>",
     # Are you sure you don't want to use Location Services?
     "<wait10s><tab><spacebar>",
     # Select Your Time Zone
-    "<wait10s><tab><tab>UTC<enter><leftShiftOn><tab><tab><leftShiftOff><spacebar>",
+    "<wait10s><tab>UTC<enter><leftShiftOn><tab><leftShiftOff><spacebar>",
     # Analytics
-    "<wait10s><leftShiftOn><tab><leftShiftOff><spacebar>",
+    "<wait10s><tab><spacebar><leftShiftOn><tab><leftShiftOff><spacebar>",
     # Screen Time
     "<wait10s><tab><spacebar>",
     # Siri
     "<wait10s><tab><spacebar><leftShiftOn><tab><leftShiftOff><spacebar>",
     # Choose Your Look
     "<wait10s><leftShiftOn><tab><leftShiftOff><spacebar>",
-    # Welcome to Mac
-    "<wait10s><spacebar>",
-    # Enable Keyboard navigation
-    # This is so that we can navigate the System Settings app using the keyboard
-    "<wait10s><leftAltOn><spacebar><leftAltOff>Terminal<enter>",
-    "<wait10s>defaults write NSGlobalDomain AppleKeyboardUIMode -int 3<enter>",
-    "<wait10s><leftAltOn>q<leftAltOff>",
-    # Now that the installation is done, open "System Settings"
-    "<wait10s><leftAltOn><spacebar><leftAltOff>System Settings<enter>",
+    # Enable Voice Over
+    "<wait10s><leftAltOn><f5><leftAltOff><wait5s>v",
+    # Now that the installation is done, open "System Preferences"
+    "<wait10s><leftAltOn><spacebar><leftAltOff>System Preferences<enter>",
     # Navigate to "Sharing"
-    "<wait10s><leftAltOn>f<leftAltOff>sharing<enter>",
-    # Navigate to "Screen Sharing" and enable it
-    "<wait10s><tab><tab><tab><tab><tab><spacebar>",
-    # Navigate to "Remote Login" and enable it
-    "<wait10s><tab><tab><tab><tab><tab><tab><tab><tab><tab><tab><tab><tab><spacebar>",
-    # Quit System Settings
-    "<wait10s><leftAltOn>q<leftAltOff>",
+    "<wait10s>sharing<enter>",
+    # Enable Screen Sharing
+    "<wait10s><tab><tab><tab><tab><spacebar>",
+    # Enable Remote Login
+    "<wait10s><down><down><down><down><spacebar><tab><tab><spacebar>",
+    # Disable Voice Over
+    "<leftAltOn><f5><leftAltOff>",
   ]
 
   // A (hopefully) temporary workaround for Virtualization.Framework's
@@ -91,7 +87,7 @@ build {
   provisioner "shell" {
     inline = [
       // Enable passwordless sudo
-      "echo admin | sudo -S sh -c \"mkdir -p /etc/sudoers.d/; echo 'admin ALL=(ALL) NOPASSWD: ALL' | EDITOR=tee visudo /etc/sudoers.d/admin-nopasswd\"",
+      "echo admin | sudo -S sh -c \"echo 'admin ALL=(ALL) NOPASSWD: ALL' | EDITOR=tee visudo /etc/sudoers.d/admin-nopasswd\"",
       // Enable auto-login
       //
       // See https://github.com/xfreebird/kcpassword for details.
@@ -102,7 +98,9 @@ build {
       // Disable screensaver for admin user
       "defaults -currentHost write com.apple.screensaver idleTime 0",
       // Prevent the VM from sleeping
+      "sudo systemsetup -setdisplaysleep Off 2>/dev/null",
       "sudo systemsetup -setsleep Off 2>/dev/null",
+      "sudo systemsetup -setcomputersleep Off 2>/dev/null",
       // Launch Safari to populate the defaults
       "/Applications/Safari.app/Contents/MacOS/Safari &",
       "SAFARI_PID=$!",
