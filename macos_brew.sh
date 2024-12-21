@@ -1,4 +1,5 @@
 #!/bin/zsh
+# IPSW feed: https://mesu.apple.com/assets/macos/com_apple_macOSIPSW/com_apple_macOSIPSW.xml
 
 # Get the action to execute
 action=$1
@@ -16,7 +17,10 @@ REGISTRY_IMAGE=${REGISTRY_IMAGE:-letiemble/macos-brew}
 # Define macOS versions
 macos_versions=(
   "sonoma:14.6.1"
-  "sequoia:15.0:latest"
+  "sequoia:15.0"
+  "sequoia:15.1"
+  "sequoia:15.1.1"
+  "sequoia:15.2:latest"
 )
 
 # Install the required tools
@@ -33,7 +37,7 @@ if [ "$action" = "build" ]; then
     IFS=':' read -r name ver latest <<< "$version"
 
     # Build the image
-    packer build -var "macos_version=$name" templates/brew.pkr.hcl
+    packer build -var "macos_codename=$name" -var "macos_version=$ver" templates/brew.pkr.hcl
   done
 fi
 
@@ -50,16 +54,16 @@ if [ "$action" = "publish" ]; then
   fi
 
   # Login to the registry
-  echo "${DOCKER_HUB_PASSWORD}" | tart login $REGISTRY_HOST -u "${DOCKER_HUB_USER}" --password-stdin
+  echo "${DOCKER_HUB_PASSWORD}" | tart login $REGISTRY_HOST --username "${DOCKER_HUB_USER}" --password-stdin
 
   for version in "${macos_versions[@]}"; do
     IFS=':' read -r name ver latest <<< "$version"
 
     # Publish the image
     if [ "$latest" = "latest" ]; then
-      tart push "${name}-brew" "$REGISTRY_HOST/$REGISTRY_IMAGE:$ver" "$REGISTRY_HOST/$REGISTRY_IMAGE:latest"
+      tart push "macos-${ver}-brew" "$REGISTRY_HOST/$REGISTRY_IMAGE:$ver" "$REGISTRY_HOST/$REGISTRY_IMAGE:$latest"
     else
-      tart push "${name}-brew" "$REGISTRY_HOST/$REGISTRY_IMAGE:$ver"
+      tart push "macos-${ver}-brew" "$REGISTRY_HOST/$REGISTRY_IMAGE:$ver"
     fi
   done
 

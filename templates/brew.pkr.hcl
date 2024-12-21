@@ -7,21 +7,20 @@ packer {
   }
 }
 
+variable "macos_codename" {
+  type = string
+}
+
 variable "macos_version" {
   type = string
 }
 
-variable "disk_size" {
-  type = number
-  default = 100
-}
-
 source "tart-cli" "tart" {
-  vm_base_name = "ghcr.io/cirruslabs/macos-${var.macos_version}-vanilla:latest"
-  vm_name      = "${var.macos_version}-brew"
+  vm_base_name = "ghcr.io/cirruslabs/macos-${var.macos_codename}-vanilla:${macos_version}"
+  vm_name      = "macos-${var.macos_version}-brew"
   cpu_count    = 4
   memory_gb    = 8
-  disk_size_gb = var.disk_size
+  disk_size_gb = 100
   headless     = true
   ssh_password = "admin"
   ssh_username = "admin"
@@ -65,7 +64,8 @@ build {
       "source ~/.zprofile",
       "brew --version",
       "brew update",
-      "brew install curl wget unzip zip ca-certificates cmake gcc git-lfs jq yq gh gitlab-runner",
+      "brew install wget unzip zip ca-certificates cmake gcc git-lfs jq yq gh gitlab-runner",
+      "brew install curl || true", // doesn't work on Monterey
       "brew install --cask git-credential-manager",
       "git lfs install",
       "sudo softwareupdate --install-rosetta --agree-to-license"
